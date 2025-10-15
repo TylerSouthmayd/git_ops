@@ -3,6 +3,8 @@ defmodule GitOps.GitHub do
   GitHub API integration for looking up user information.
   """
 
+  require Logger
+
   @doc """
   Batch find GitHub users by their email addresses.
   Returns a map of %{email => {:ok, user_info} | {:error, reason}}
@@ -42,6 +44,7 @@ defmodule GitOps.GitHub do
              params: [q: "#{email} in:email", per_page: 2]
            ) do
         {:ok, %Req.Response{status: 200, body: %{"items" => [first_user | _]}}} ->
+          Logger.info("Found user #{first_user["login"]} with email #{email}")
           {:ok,
            %{
              username: first_user["login"],
@@ -50,12 +53,15 @@ defmodule GitOps.GitHub do
            }}
 
         {:ok, %Req.Response{status: 200, body: %{"items" => []}}} ->
+          Logger.error("No user found with email #{email}")
           {:error, "No user found with email #{email}"}
 
         {:ok, %Req.Response{status: status, body: body}} ->
+          Logger.error("GitHub API request failed with status #{status}: #{inspect(body)}")
           {:error, "GitHub API request failed with status #{status}: #{inspect(body)}"}
 
         {:error, reason} ->
+          Logger.error("Error making GitHub API request: #{inspect(reason)}")
           {:error, "Error making GitHub API request: #{inspect(reason)}"}
       end
     end
@@ -73,15 +79,19 @@ defmodule GitOps.GitHub do
            headers: github_headers()
          ) do
       {:ok, %Req.Response{status: 200, body: [first_pr | _]}} ->
+        Logger.info("Found pull request #{first_pr["number"]} for commit #{hash}")
         {:ok, %{number: first_pr["number"], url: first_pr["html_url"]}}
 
       {:ok, %Req.Response{status: 200, body: []}} ->
+        Logger.info("No pull request found for commit #{hash}")
         {:ok, nil}
 
       {:ok, %Req.Response{status: status, body: body}} ->
+        Logger.error("GitHub API request failed with status #{status}: #{inspect(body)}")
         {:error, "GitHub API request failed with status #{status}: #{inspect(body)}"}
 
       {:error, reason} ->
+        Logger.error("Error making GitHub API request: #{inspect(reason)}")
         {:error, "Error making GitHub API request: #{inspect(reason)}"}
     end
   end
@@ -101,8 +111,12 @@ defmodule GitOps.GitHub do
     }
 
     case GitOps.Config.github_token() do
-      nil -> base_headers
-      token -> Map.put(base_headers, "authorization", "Bearer #{token}")
+      nil ->
+        Logger.info("No GitHub token found, using base headers")
+        base_headers
+      token ->
+        Logger.info("GitHub token found, using it")
+        Map.put(base_headers, "authorization", "Bearer #{token}")
     end
   end
 end
