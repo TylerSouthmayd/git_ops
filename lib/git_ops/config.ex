@@ -75,6 +75,9 @@ defmodule GitOps.Config do
   def github_api_base_url,
     do: Application.get_env(:git_ops, :github_api_base_url) || "https://api.github.com"
 
+  def github_token,
+    do: Application.get_env(:git_ops, :github_token) || System.get_env("GITHUB_TOKEN")
+
   def manage_readme_version do
     case Application.get_env(:git_ops, :manage_readme_version) do
       true ->

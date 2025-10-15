@@ -94,10 +94,15 @@ defmodule GitOps.GitHub do
   end
 
   defp github_headers do
-    %{
+    base_headers = %{
       "accept" => "application/vnd.github.v3+json",
       "user-agent" => "Elixir.GitOps",
       "X-GitHub-Api-Version" => "2022-11-28"
     }
+
+    case GitOps.Config.github_token() do
+      nil -> base_headers
+      token -> Map.put(base_headers, "authorization", "Bearer #{token}")
+    end
   end
 end
